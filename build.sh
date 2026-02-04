@@ -17,10 +17,10 @@ if ! command -v xcodebuild &> /dev/null; then
     exit 1
 fi
 
-# Initialize submodules if needed
-if [ ! -f "vendor/MIDIApps/MIDIApps.xcworkspace/contents.xcworkspacedata" ]; then
-    echo "Initializing git submodules..."
-    git submodule update --init --recursive
+# Verify framework source exists
+if [ ! -f "src/SnoizeMIDISpy/SnoizeMIDISpy.xcodeproj/project.pbxproj" ]; then
+    echo "Error: SnoizeMIDISpy source not found in src/SnoizeMIDISpy/"
+    exit 1
 fi
 
 # Build configuration (Release by default)

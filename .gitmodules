@@ -1,3 +1,0 @@
-[submodule "vendor/MIDIApps"]
-	path = vendor/MIDIApps
-	url = https://github.com/krevis/MIDIApps.git

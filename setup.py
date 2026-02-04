@@ -26,7 +26,7 @@ except ImportError:
 
 # Paths
 ROOT_DIR = Path(__file__).parent.absolute()
-VENDOR_DIR = ROOT_DIR / "vendor" / "MIDIApps"
+SNOIZE_DIR = ROOT_DIR / "src" / "SnoizeMIDISpy"
 PACKAGE_DIR = ROOT_DIR / "pyMIDIspy"
 LIB_DIR = PACKAGE_DIR / "lib"
 
@@ -47,10 +47,9 @@ def build_snoize_midi_spy():
     if not check_macos():
         return False
     
-    workspace = VENDOR_DIR / "MIDIApps.xcworkspace"
-    if not workspace.exists():
-        print(f"Error: MIDIApps workspace not found at {workspace}")
-        print("Did you run: git submodule update --init --recursive?")
+    project = SNOIZE_DIR / "SnoizeMIDISpy.xcodeproj"
+    if not project.exists():
+        print(f"Error: SnoizeMIDISpy project not found at {project}")
         return False
     
     # Create the lib directory
@@ -62,10 +61,10 @@ def build_snoize_midi_spy():
     
     print(f"Building SnoizeMIDISpy framework ({XCODE_CONFIG})...")
     
-    # Build the SnoizeMIDISpy scheme
+    # Build the SnoizeMIDISpy scheme using the project directly
     cmd = [
         "xcodebuild",
-        "-workspace", str(workspace),
+        "-project", str(project),
         "-scheme", "SnoizeMIDISpy.framework",
         "-configuration", XCODE_CONFIG,
         "-derivedDataPath", str(derived_data),
@@ -77,7 +76,7 @@ def build_snoize_midi_spy():
     ]
     
     try:
-        subprocess.run(cmd, check=True, cwd=str(VENDOR_DIR))
+        subprocess.run(cmd, check=True, cwd=str(SNOIZE_DIR))
     except subprocess.CalledProcessError as e:
         print(f"Error building SnoizeMIDISpy: {e}")
         return False
