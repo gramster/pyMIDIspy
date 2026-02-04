@@ -165,6 +165,71 @@ with MIDIInputClient(callback=on_incoming) as input_client, \
         time.sleep(0.1)
 ```
 
+### Filtering Messages
+
+Use `MessageFilter` to filter MIDI messages before they reach your callback:
+
+```python
+from pyMIDIspy import MIDIInputClient, MessageFilter
+
+# Only receive note messages on channel 1
+filter = MessageFilter(types=["note"], channels=[1])
+
+client = MIDIInputClient(callback=on_midi, message_filter=filter)
+```
+
+**Common filtering patterns:**
+
+```python
+# Exclude timing clock and active sensing (common noise)
+filter = MessageFilter(exclude_types=["timing_clock", "active_sensing"])
+
+# Only note on/off messages
+filter = MessageFilter(types=["note"])
+
+# Only control change messages for specific controllers (mod wheel, volume, pan)
+filter = MessageFilter(types=["control_change"], controllers=[1, 7, 10])
+
+# Only messages on channels 1-4
+filter = MessageFilter(channels=[1, 2, 3, 4])
+
+# Combine: notes on channel 1, excluding note-off
+filter = MessageFilter(types=["note_on"], channels=[1])
+```
+
+**Change filter at runtime:**
+
+```python
+client = MIDIInputClient(callback=on_midi)
+client.connect_source(source)
+
+# Later, add filtering
+client.message_filter = MessageFilter(types=["note"])
+
+# Remove filtering
+client.message_filter = None
+```
+
+**Available message types for filtering:**
+
+| Type | Description |
+|------|-------------|
+| `"note_off"` | Note Off messages |
+| `"note_on"` | Note On messages (velocity > 0) |
+| `"note"` | Both Note On and Note Off |
+| `"control_change"` | Control Change (CC) messages |
+| `"program_change"` | Program Change messages |
+| `"pitch_bend"` | Pitch Bend messages |
+| `"poly_pressure"` | Polyphonic Aftertouch |
+| `"channel_pressure"` | Channel Aftertouch |
+| `"sysex"` | System Exclusive messages |
+| `"timing_clock"` | MIDI Clock (0xF8) |
+| `"transport"` | Start, Stop, Continue |
+| `"active_sensing"` | Active Sensing (0xFE) |
+| `"realtime"` | All realtime (clock, transport, active sensing) |
+| `"channel"` | All channel voice messages |
+| `"system"` | All system messages |
+
 ### API Reference
 
 #### Functions
@@ -191,7 +256,7 @@ Install the MIDI spy driver (for outgoing capture only). Returns `None` on succe
 Receives incoming MIDI from sources (standard CoreMIDI). No driver required.
 
 ```python
-client = MIDIInputClient(callback=my_callback, client_name="MyApp")
+client = MIDIInputClient(callback=my_callback, client_name="MyApp", message_filter=filter)
 ```
 
 **Methods:**
@@ -203,13 +268,14 @@ client = MIDIInputClient(callback=my_callback, client_name="MyApp")
 
 **Properties:**
 - `connected_sources` - List of currently connected sources
+- `message_filter` - Get/set the MessageFilter (or None)
 
 ##### `MIDIOutputClient`
 
 Captures outgoing MIDI sent to destinations. Requires the spy driver.
 
 ```python
-client = MIDIOutputClient(callback=my_callback)
+client = MIDIOutputClient(callback=my_callback, message_filter=filter)
 ```
 
 **Methods:**
@@ -222,6 +288,22 @@ client = MIDIOutputClient(callback=my_callback)
 
 **Properties:**
 - `connected_destinations` - List of currently connected destinations
+- `message_filter` - Get/set the MessageFilter (or None)
+
+##### `MessageFilter`
+
+Filters MIDI messages by type, channel, or other criteria.
+
+```python
+filter = MessageFilter(
+    types=["note", "control_change"],  # Include only these types
+    exclude_types=["timing_clock"],    # Exclude these types
+    channels=[1, 2],                   # Include only these channels (1-16)
+    exclude_channels=[10],             # Exclude these channels
+    controllers=[1, 7, 10],            # For CC: only these controller numbers
+    notes=[60, 62, 64],                # For notes: only these note numbers
+)
+```
 
 ##### `MIDISource`
 
