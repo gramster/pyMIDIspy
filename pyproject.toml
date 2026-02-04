@@ -10,6 +10,7 @@ authors = [
 ]
 description = "Python wrapper for SnoizeMIDISpy - capture outgoing MIDI on macOS"
 readme = "README.md"
+license = {text = "BSD-3-Clause"}
 requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",

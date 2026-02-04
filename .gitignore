@@ -104,9 +104,8 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 
-# Built framework (bundled in wheel)
-pyMIDIspy/lib/*.framework/
-pyMIDIspy/lib/*.plugin/
+# Built framework (bundled in wheel, generated during build)
+pyMIDIspy/lib/
 
 # Temporary build artifacts
 _build/

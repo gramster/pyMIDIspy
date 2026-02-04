@@ -17,6 +17,12 @@ from setuptools.command.build_py import build_py
 from setuptools.command.develop import develop
 from setuptools.command.egg_info import egg_info
 
+try:
+    from wheel.bdist_wheel import bdist_wheel
+    HAS_WHEEL = True
+except ImportError:
+    HAS_WHEEL = False
+
 
 # Paths
 ROOT_DIR = Path(__file__).parent.absolute()
@@ -144,6 +150,26 @@ class EggInfoCommand(egg_info):
         super().run()
 
 
+# Custom bdist_wheel to tag as platform-specific (macOS only)
+if HAS_WHEEL:
+    class BdistWheelCommand(bdist_wheel):
+        """Custom bdist_wheel that marks the wheel as macOS-only."""
+        
+        def finalize_options(self):
+            super().finalize_options()
+            # Mark as not pure Python (contains native code)
+            self.root_is_pure = False
+        
+        def get_tag(self):
+            # Get the default tags
+            python, abi, plat = super().get_tag()
+            # Force macOS platform tag for universal2 (arm64 + x86_64)
+            if platform.system() == "Darwin":
+                # Use macosx_10_9_universal2 for compatibility
+                plat = "macosx_10_13_universal2"
+            return python, abi, plat
+
+
 # Read long description
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -191,5 +217,6 @@ setup(
         "build_py": BuildPyCommand,
         "develop": DevelopCommand,
         "egg_info": EggInfoCommand,
+        **({"bdist_wheel": BdistWheelCommand} if HAS_WHEEL else {}),
     },
 )
