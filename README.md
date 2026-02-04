@@ -288,6 +288,31 @@ void (^)(const MIDIPacketList *pktlist, void *srcConnRefCon)
 
 Blocks are not simple C function pointers—they're closures with a special memory layout that the runtime can retain/release. The SnoizeMIDISpy framework calls `CFRetain()` on the callback, which would crash with a plain C function pointer. PyObjC's `objc.Block` creates properly-structured blocks that are ABI-compatible with what CoreMIDI and the framework expect.
 
+## Publishing to PyPI
+
+To publish a new version to PyPI:
+
+```bash
+# 1. Build the wheel (this compiles the SnoizeMIDISpy framework)
+./build.sh
+
+# 2. Verify the package metadata and contents
+twine check dist/*
+
+# 3. (Recommended) Test on TestPyPI first
+twine upload --repository testpypi dist/*
+pip install --index-url https://test.pypi.org/simple/ pyMIDIspy
+
+# 4. Upload to PyPI
+twine upload dist/*
+```
+
+**Notes:**
+- The wheel is macOS-only and tagged as `macosx_10_13_universal2` (supports both arm64 and x86_64)
+- Source distributions require Xcode to build the framework
+- You'll need a PyPI account and API token (create at https://pypi.org/manage/account/token/)
+- Store your token in `~/.pypirc` or use `TWINE_USERNAME=__token__` and `TWINE_PASSWORD=<your-token>`
+
 ## License
 
 BSD License - see the LICENSE file.
