@@ -662,13 +662,15 @@ class MIDIOutputClient:
         status = self._spy.MIDISpyClientCreate(byref(self._client_ref))
         _check_status(status, "MIDISpyClientCreate")
         
-        # Create a port with our callback
-        status = self._spy.MIDISpyPortCreate(
+        # Create a port with our callback using MIDISpyPortCreateWithProc (function pointer)
+        # instead of MIDISpyPortCreate (Objective-C block)
+        status = self._spy.MIDISpyPortCreateWithProc(
             self._client_ref,
             self._c_callback,
+            c_void_p(0),  # readProcRefCon (not used, we pass source info via srcConnRefCon)
             byref(self._port_ref)
         )
-        _check_status(status, "MIDISpyPortCreate")
+        _check_status(status, "MIDISpyPortCreateWithProc")
     
     def _setup_function_signatures(self):
         """Set up ctypes function signatures for the spy framework."""
@@ -678,8 +680,11 @@ class MIDIOutputClient:
         self._spy.MIDISpyClientDispose.argtypes = [c_void_p]
         self._spy.MIDISpyClientDispose.restype = c_int32
         
-        self._spy.MIDISpyPortCreate.argtypes = [c_void_p, c_void_p, POINTER(c_void_p)]
-        self._spy.MIDISpyPortCreate.restype = c_int32
+        # MIDIReadProc: void (*)(const MIDIPacketList *pktlist, void *readProcRefCon, void *srcConnRefCon)
+        MIDIReadProc = CFUNCTYPE(None, c_void_p, c_void_p, c_void_p)
+        
+        self._spy.MIDISpyPortCreateWithProc.argtypes = [c_void_p, MIDIReadProc, c_void_p, POINTER(c_void_p)]
+        self._spy.MIDISpyPortCreateWithProc.restype = c_int32
         
         self._spy.MIDISpyPortDispose.argtypes = [c_void_p]
         self._spy.MIDISpyPortDispose.restype = c_int32
@@ -692,10 +697,10 @@ class MIDIOutputClient:
     
     def _create_c_callback(self):
         """Create the C callback function for receiving MIDI data."""
-        # The MIDIReadBlock is an Objective-C block with signature:
-        #   void (^)(const MIDIPacketList *pktlist, void *srcConnRefCon)
+        # MIDIReadProc signature:
+        #   void (*)(const MIDIPacketList *pktlist, void *readProcRefCon, void *srcConnRefCon)
         
-        def callback(packet_list_ptr, ref_con):
+        def callback(packet_list_ptr, read_proc_ref_con, src_conn_ref_con):
             if self._closed:
                 return
             
@@ -718,15 +723,15 @@ class MIDIOutputClient:
                 # Parse packets from the MIDIPacketList
                 messages = self._parse_packet_list(addr)
                 
-                # Get the source endpoint from refCon
+                # Get the source endpoint from srcConnRefCon (passed when connecting)
                 source_id = 0
-                if ref_con:
-                    if hasattr(ref_con, 'value'):
-                        source_id = ref_con.value
-                    elif isinstance(ref_con, int):
-                        source_id = ref_con
+                if src_conn_ref_con:
+                    if hasattr(src_conn_ref_con, 'value'):
+                        source_id = src_conn_ref_con.value
+                    elif isinstance(src_conn_ref_con, int):
+                        source_id = src_conn_ref_con
                     else:
-                        source_id = int(ref_con)
+                        source_id = int(src_conn_ref_con)
                 
                 # Call the user's callback
                 if messages:
@@ -742,8 +747,9 @@ class MIDIOutputClient:
                 import traceback
                 traceback.print_exc()
         
-        # Create the block/callback
-        return _create_midi_read_block(callback)
+        # Create the function pointer callback using CFUNCTYPE
+        MIDIReadProc = CFUNCTYPE(None, c_void_p, c_void_p, c_void_p)
+        return MIDIReadProc(callback)
     
     def _parse_packet_list(self, packet_list_addr: int) -> List[MIDIMessage]:
         """Parse a MIDIPacketList pointer into MIDIMessage objects."""
