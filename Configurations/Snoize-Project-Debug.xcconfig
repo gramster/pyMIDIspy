@@ -1,0 +1,17 @@
+#include "Snoize-Project-Global.xcconfig"
+
+// Debug builds with no optimization
+GCC_OPTIMIZATION_LEVEL = 0
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+
+// Debug builds with DEBUG set
+GCC_PREPROCESSOR_DEFINITIONS = DEBUG
+
+// Debug builds only the chosen architecture, not all, to make builds faster
+ONLY_ACTIVE_ARCH = YES
+
+// Use DWARF debug symbols, which are faster
+DEBUG_INFORMATION_FORMAT = dwarf
+
+// Don't strip debug symbols when copying frameworks
+COPY_PHASE_STRIP = NO

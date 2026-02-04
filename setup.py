@@ -72,6 +72,10 @@ def build_snoize_midi_spy():
         "BUILD_LIBRARY_FOR_DISTRIBUTION=YES",
         # Build for both architectures for universal binary
         "ARCHS=x86_64 arm64",
+        # Disable code signing for local builds
+        "CODE_SIGN_IDENTITY=-",
+        "CODE_SIGNING_REQUIRED=NO",
+        "CODE_SIGNING_ALLOWED=NO",
         "build",
     ]
     
