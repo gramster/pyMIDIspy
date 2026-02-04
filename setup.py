@@ -66,7 +66,7 @@ def build_snoize_midi_spy():
     cmd = [
         "xcodebuild",
         "-workspace", str(workspace),
-        "-scheme", "SnoizeMIDISpy",
+        "-scheme", "SnoizeMIDISpy.framework",
         "-configuration", XCODE_CONFIG,
         "-derivedDataPath", str(derived_data),
         "ONLY_ACTIVE_ARCH=NO",

@@ -30,6 +30,7 @@ keywords = ["midi", "macos", "coremidi", "audio", "music"]
 dependencies = [
     "pyobjc-core",
     "pyobjc-framework-Cocoa",
+    "pyobjc-framework-CoreMIDI",
 ]
 
 [project.optional-dependencies]

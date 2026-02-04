@@ -238,23 +238,23 @@ MIDISpyClientRef = c_void_p
 MIDISpyPortRef = c_void_p
 
 # MIDIReadBlock callback type: void (^)(const MIDIPacketList *pktlist, void *srcConnRefCon)
-# This is an Objective-C block. We'll handle it differently based on PyObjC availability.
+# This is an Objective-C block, but we use CFUNCTYPE as a workaround since
+# PyObjC doesn't expose objc.Block for creating blocks from Python.
 MIDIReadBlockFunc = CFUNCTYPE(None, c_void_p, c_void_p)
 
 
 def _create_midi_read_block(callback_func):
     """
-    Create a MIDIReadBlock-compatible Objective-C block.
+    Create a MIDIReadBlock-compatible callback.
     
     MIDIReadBlock is an Objective-C block with signature:
         void (^)(const MIDIPacketList *pktlist, void *srcConnRefCon)
     
-    We use PyObjC to create a proper block that CoreMIDI can retain/release.
+    We use CFUNCTYPE as a workaround. The caller must keep a reference
+    to the returned callback to prevent garbage collection.
     """
-    # Block signature: void, pointer (packet list), pointer (refcon)
-    # Using 'v' for void, '@?' for block, '^v' for void pointer
-    block = objc.Block(callback_func, signature=b'v^v^v', argcount=2)
-    return block
+    # Create a C function pointer from the Python callback
+    return MIDIReadBlockFunc(callback_func)
 
 
 # =============================================================================
@@ -956,6 +956,15 @@ class MIDIOutputClient:
 # MIDIInputClient class - for receiving incoming MIDI
 # =============================================================================
 
+# Try to import PyObjC CoreMIDI bindings for proper block support
+try:
+    import CoreMIDI as _CoreMIDI_PyObjC
+    _HAS_PYOBJC_COREMIDI = True
+except ImportError:
+    _HAS_PYOBJC_COREMIDI = False
+    _CoreMIDI_PyObjC = None
+
+
 class MIDIInputClient:
     """
     A client for receiving incoming MIDI messages from sources.
@@ -985,42 +994,47 @@ class MIDIInputClient:
                       Signature: callback(messages: List[MIDIMessage], source_unique_id: int)
             client_name: Name for the MIDI client (visible in system).
             message_filter: Optional MessageFilter to filter messages before callback.
+        
+        Raises:
+            ImportError: If pyobjc-framework-CoreMIDI is not installed.
         """
+        if not _HAS_PYOBJC_COREMIDI:
+            raise ImportError(
+                "MIDIInputClient requires pyobjc-framework-CoreMIDI. "
+                "Install it with: pip install pyobjc-framework-CoreMIDI"
+            )
+        
         self._callback = callback
         self._message_filter = message_filter
-        self._coremidi = _get_coremidi()
-        self._cf = _get_corefoundation()
-        
-        self._client_ref = c_uint32()
-        self._port_ref = c_uint32()
         self._connected_sources: Set[int] = set()
         self._source_refcons: dict = {}  # endpoint_ref -> unique_id
         self._lock = threading.Lock()
         self._closed = False
         
-        # Keep reference to callback to prevent GC
-        self._read_block = self._create_read_block()
+        # Create the callback - use callbackFor decorator for proper signature
+        self._read_proc = self._create_read_proc()
         
-        # Create MIDI client
-        client_name_cf = self._cf.CFStringCreateWithCString(None, client_name.encode('utf-8'), 0)
-        status = self._coremidi.MIDIClientCreate(client_name_cf, None, None, byref(self._client_ref))
-        if status != 0:
-            raise MIDISpyError(f"MIDIClientCreate failed with status {status}")
+        # Create MIDI client using PyObjC bindings
+        err, self._client_ref = _CoreMIDI_PyObjC.MIDIClientCreate(client_name, None, None, None)
+        if err != 0:
+            raise MIDISpyError(f"MIDIClientCreate failed with status {err}")
         
-        # Create input port with our callback
-        port_name_cf = self._cf.CFStringCreateWithCString(None, b"Input", 0)
-        status = self._coremidi.MIDIInputPortCreateWithBlock(
+        # Create input port with callback (using deprecated but functional API)
+        err, self._port_ref = _CoreMIDI_PyObjC.MIDIInputPortCreate(
             self._client_ref,
-            port_name_cf,
-            byref(self._port_ref),
-            self._read_block
+            "Input",
+            self._read_proc,
+            None,
+            None
         )
-        if status != 0:
-            raise MIDISpyError(f"MIDIInputPortCreateWithBlock failed with status {status}")
+        if err != 0:
+            raise MIDISpyError(f"MIDIInputPortCreate failed with status {err}")
     
-    def _create_read_block(self):
-        """Create the read block callback."""
-        def callback(packet_list_ptr, ref_con):
+    def _create_read_proc(self):
+        """Create the read callback using PyObjC's proper callback support."""
+        # Use callbackFor decorator to get the right signature
+        @objc.callbackFor(_CoreMIDI_PyObjC.MIDIInputPortCreate)
+        def read_proc(packet_list_ptr, read_proc_refcon, src_conn_refcon):
             if self._closed:
                 return
             
@@ -1028,32 +1042,16 @@ class MIDIInputClient:
                 if packet_list_ptr is None:
                     return
                 
-                # Convert to integer address
-                if hasattr(packet_list_ptr, 'value'):
-                    addr = packet_list_ptr.value
-                elif isinstance(packet_list_ptr, int):
-                    addr = packet_list_ptr
-                else:
-                    addr = int(packet_list_ptr)
+                # Parse the packet list from the PyObjC pointer wrapper
+                messages = self._parse_packet_list_pyobjc(packet_list_ptr)
                 
-                if addr == 0:
-                    return
-                
-                # Parse packets
-                messages = self._parse_packet_list(addr)
-                
-                # Get source ID from refcon
+                # Get source ID from src_conn_refcon
                 source_id = 0
-                if ref_con:
-                    if hasattr(ref_con, 'value'):
-                        source_id = ref_con.value if ref_con.value else 0
-                    elif isinstance(ref_con, int):
-                        source_id = ref_con
-                    else:
-                        try:
-                            source_id = int(ref_con)
-                        except:
-                            source_id = 0
+                if src_conn_refcon:
+                    try:
+                        source_id = int(src_conn_refcon)
+                    except:
+                        source_id = 0
                 
                 if messages:
                     # Apply filter if set
@@ -1065,8 +1063,28 @@ class MIDIInputClient:
             except Exception as e:
                 import sys
                 print(f"Error in MIDI input callback: {e}", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
         
-        return _create_midi_read_block(callback)
+        return read_proc
+    
+    def _parse_packet_list_pyobjc(self, packet_list_ptr) -> List[MIDIMessage]:
+        """Parse a MIDIPacketList from PyObjC pointer wrapper."""
+        messages = []
+        
+        # The packet_list_ptr is a PyObjCPointer object.
+        # The actual C pointer is stored at offset 16 from the Python object's address.
+        try:
+            obj_addr = id(packet_list_ptr)
+            ptr_ptr = ctypes.cast(obj_addr + 16, ctypes.POINTER(ctypes.c_void_p))
+            addr = ptr_ptr[0]
+        except:
+            return messages
+        
+        if not addr:
+            return messages
+        
+        return self._parse_packet_list(addr)
     
     def _parse_packet_list(self, packet_list_addr: int) -> List[MIDIMessage]:
         """Parse a MIDIPacketList pointer into MIDIMessage objects."""
@@ -1122,14 +1140,14 @@ class MIDIInputClient:
             if source.endpoint_ref in self._connected_sources:
                 raise ConnectionExistsError(f"Already connected to {source.name}")
             
-            # Use unique_id as refcon
-            ref_con = c_void_p(source.unique_id)
+            # Store refcon mapping
             self._source_refcons[source.endpoint_ref] = source.unique_id
             
-            status = self._coremidi.MIDIPortConnectSource(
+            # Connect using PyObjC - pass unique_id as refcon
+            status = _CoreMIDI_PyObjC.MIDIPortConnectSource(
                 self._port_ref,
                 source.endpoint_ref,
-                ref_con
+                source.unique_id
             )
             if status != 0:
                 raise MIDISpyError(f"MIDIPortConnectSource failed with status {status}")
@@ -1152,7 +1170,7 @@ class MIDIInputClient:
             if source.endpoint_ref not in self._connected_sources:
                 raise ConnectionNotFoundError(f"Not connected to {source.name}")
             
-            status = self._coremidi.MIDIPortDisconnectSource(
+            status = _CoreMIDI_PyObjC.MIDIPortDisconnectSource(
                 self._port_ref,
                 source.endpoint_ref
             )
@@ -1179,7 +1197,7 @@ class MIDIInputClient:
         
         for endpoint_ref in endpoints:
             try:
-                self._coremidi.MIDIPortDisconnectSource(self._port_ref, endpoint_ref)
+                _CoreMIDI_PyObjC.MIDIPortDisconnectSource(self._port_ref, endpoint_ref)
             except:
                 pass
         
@@ -1220,17 +1238,17 @@ class MIDIInputClient:
         
         if self._port_ref:
             try:
-                self._coremidi.MIDIPortDispose(self._port_ref)
+                _CoreMIDI_PyObjC.MIDIPortDispose(self._port_ref)
             except:
                 pass
-            self._port_ref = c_uint32()
+            self._port_ref = None
         
         if self._client_ref:
             try:
-                self._coremidi.MIDIClientDispose(self._client_ref)
+                _CoreMIDI_PyObjC.MIDIClientDispose(self._client_ref)
             except:
                 pass
-            self._client_ref = c_uint32()
+            self._client_ref = None
     
     def __enter__(self):
         return self
