@@ -3,7 +3,7 @@
 Example: Monitor a specific MIDI destination.
 
 Usage:
-    python monitor_one.py <unique_id>
+    python monitor_one.py <name>
     python monitor_one.py --list
 """
 
@@ -12,7 +12,7 @@ import time
 from pyMIDIspy import (
     MIDIOutputClient,
     get_destinations,
-    get_destination_by_unique_id,
+    get_destination_by_name,
     install_driver_if_necessary,
 )
 
@@ -21,22 +21,18 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] == "--list":
         print("Available MIDI destinations:")
         for dest in get_destinations():
-            print(f"  {dest.unique_id}: {dest.name}")
+            print(f"  {dest.name}")
         print()
-        print("Usage: python monitor_one.py <unique_id>")
+        print("Usage: python monitor_one.py <name>")
         return 0
     
-    # Parse the destination ID
-    try:
-        unique_id = int(sys.argv[1])
-    except ValueError:
-        print(f"Error: '{sys.argv[1]}' is not a valid unique ID")
-        return 1
+    # Get the destination name (join args in case of spaces)
+    name = " ".join(sys.argv[1:])
     
     # Find the destination
-    dest = get_destination_by_unique_id(unique_id)
+    dest = get_destination_by_name(name)
     if dest is None:
-        print(f"Error: No destination found with ID {unique_id}")
+        print(f"Error: No destination found matching '{name}'")
         print("Use --list to see available destinations")
         return 1
     

@@ -101,17 +101,15 @@ def on_midi(messages, source_id):
 
 # List sources
 for src in get_sources():
-    print(f"  {src.name} (ID: {src.unique_id})")
+    print(f"  {src.name}")
 
-# Receive MIDI from a source
+# Receive MIDI from a source by name
 with MIDIInputClient(callback=on_midi) as client:
-    sources = get_sources()
-    if sources:
-        client.connect_source(sources[0])
-        
-        import time
-        while True:
-            time.sleep(0.1)
+    client.connect_source_by_name("KeyStep")  # case-insensitive, partial match
+    
+    import time
+    while True:
+        time.sleep(0.1)
 ```
 
 ### Outgoing MIDI (to destinations)
@@ -126,15 +124,17 @@ def on_midi(messages, dest_id):
     for msg in messages:
         print(f"Captured outgoing: {msg.data.hex()}")
 
-# Capture MIDI being sent to a destination
+# List destinations
+for dest in get_destinations():
+    print(f"  {dest.name}")
+
+# Capture MIDI being sent to a destination by name
 with MIDIOutputClient(callback=on_midi) as client:
-    destinations = get_destinations()
-    if destinations:
-        client.connect_destination(destinations[0])
-        
-        import time
-        while True:
-            time.sleep(0.1)
+    client.connect_destination_by_name("XR18")  # case-insensitive, partial match
+    
+    import time
+    while True:
+        time.sleep(0.1)
 ```
 
 ### Both directions
@@ -237,14 +237,14 @@ client.message_filter = None
 ##### `get_destinations() -> List[MIDIDestination]`
 Get a list of all MIDI destinations (outputs) available on the system.
 
-##### `get_destination_by_unique_id(unique_id: int) -> Optional[MIDIDestination]`
-Find a specific MIDI destination by its unique identifier.
+##### `get_destination_by_name(name: str) -> Optional[MIDIDestination]`
+Find a MIDI destination by name (case-insensitive, partial match supported).
 
 ##### `get_sources() -> List[MIDISource]`
 Get a list of all MIDI sources (inputs) available on the system.
 
-##### `get_source_by_unique_id(unique_id: int) -> Optional[MIDISource]`
-Find a specific MIDI source by its unique identifier.
+##### `get_source_by_name(name: str) -> Optional[MIDISource]`
+Find a MIDI source by name (case-insensitive, partial match supported).
 
 ##### `install_driver_if_necessary() -> Optional[str]`
 Install the MIDI spy driver (for outgoing capture only). Returns `None` on success.
@@ -261,8 +261,9 @@ client = MIDIInputClient(callback=my_callback, client_name="MyApp", message_filt
 
 **Methods:**
 - `connect_source(source: MIDISource)` - Start receiving from a source
-- `connect_source_by_id(unique_id: int)` - Connect by unique ID
+- `connect_source_by_name(name: str)` - Connect by name (case-insensitive, partial match)
 - `disconnect_source(source: MIDISource)` - Stop receiving
+- `disconnect_source_by_name(name: str)` - Disconnect by name
 - `disconnect_all()` - Disconnect from all sources
 - `close()` - Release all resources
 
@@ -280,9 +281,9 @@ client = MIDIOutputClient(callback=my_callback, message_filter=filter)
 
 **Methods:**
 - `connect_destination(destination: MIDIDestination)` - Start capturing from a destination
-- `connect_destination_by_id(unique_id: int)` - Connect by unique ID
+- `connect_destination_by_name(name: str)` - Connect by name (case-insensitive, partial match)
 - `disconnect_destination(destination: MIDIDestination)` - Stop capturing
-- `disconnect_destination_by_id(unique_id: int)` - Disconnect by unique ID  
+- `disconnect_destination_by_name(name: str)` - Disconnect by name
 - `disconnect_all()` - Disconnect from all destinations
 - `close()` - Release all resources
 

@@ -36,8 +36,8 @@ rm -rf *.egg-info
 
 # Build the framework using setup.py
 echo "Building framework and wheel..."
-python -m pip install --upgrade pip build wheel
-python -m build
+python3 -m pip install --upgrade pip build wheel
+python3 -m build
 
 echo ""
 echo "========================================"

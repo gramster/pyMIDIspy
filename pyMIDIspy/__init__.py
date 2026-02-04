@@ -10,15 +10,15 @@ Usage:
 
     # List available MIDI destinations
     for dest in get_destinations():
-        print(f"{dest.name} (ID: {dest.unique_id})")
+        print(dest.name)
 
-    # Create an output client and monitor a destination
+    # Create an output client and monitor a destination by name
     def on_midi_message(messages, source_endpoint):
         for msg in messages:
             print(f"Captured: {msg}")
 
     client = MIDIOutputClient(callback=on_midi_message)
-    client.connect_destination(destination_unique_id)
+    client.connect_destination_by_name("XR18")  # partial match works too
 
     # Keep running...
     try:
@@ -47,9 +47,9 @@ from .core import (
     # Functions
     install_driver_if_necessary,
     get_destinations,
-    get_destination_by_unique_id,
+    get_destination_by_name,
     get_sources,
-    get_source_by_unique_id,
+    get_source_by_name,
     # Data classes
     MIDIDestination,
     MIDISource,
