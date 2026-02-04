@@ -2,8 +2,8 @@
 MIDI message utilities and parsing helpers.
 """
 
-from typing import List, Tuple, Optional
-from dataclasses import dataclass
+from typing import List, Tuple, Optional, Set, Union
+from dataclasses import dataclass, field
 
 # MIDI Status Bytes
 NOTE_OFF = 0x80
@@ -25,6 +25,23 @@ CONTINUE = 0xFB
 STOP = 0xFC
 ACTIVE_SENSING = 0xFE
 SYSTEM_RESET = 0xFF
+
+# Message type constants for filtering
+MSG_NOTE_OFF = "note_off"
+MSG_NOTE_ON = "note_on"
+MSG_NOTE = "note"  # Both note on and note off
+MSG_POLY_PRESSURE = "poly_pressure"
+MSG_CONTROL_CHANGE = "control_change"
+MSG_PROGRAM_CHANGE = "program_change"
+MSG_CHANNEL_PRESSURE = "channel_pressure"
+MSG_PITCH_BEND = "pitch_bend"
+MSG_SYSEX = "sysex"
+MSG_TIMING_CLOCK = "timing_clock"
+MSG_TRANSPORT = "transport"  # Start, Stop, Continue
+MSG_ACTIVE_SENSING = "active_sensing"
+MSG_REALTIME = "realtime"  # All realtime messages (clock, transport, active sensing)
+MSG_CHANNEL = "channel"  # All channel messages
+MSG_SYSTEM = "system"  # All system messages
 
 # Note names
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -250,3 +267,164 @@ CONTROLLER_NAMES = {
 def controller_name(cc_number: int) -> str:
     """Get the name of a MIDI controller number."""
     return CONTROLLER_NAMES.get(cc_number, f"CC {cc_number}")
+
+
+@dataclass
+class MessageFilter:
+    """
+    Filter for MIDI messages by type, channel, or other criteria.
+    
+    Use with MIDIInputClient or MIDIOutputClient to filter incoming messages
+    before they reach your callback.
+    
+    Example:
+        # Only note messages on channel 1
+        filter = MessageFilter(types=["note"], channels=[1])
+        
+        # Exclude timing clock and active sensing (common noise)
+        filter = MessageFilter(exclude_types=["timing_clock", "active_sensing"])
+        
+        # Only specific controllers
+        filter = MessageFilter(types=["control_change"], controllers=[1, 7, 10])
+        
+        client = MIDIInputClient(callback=on_midi, message_filter=filter)
+    
+    Message type strings:
+        - "note_off", "note_on", "note" (both on/off)
+        - "poly_pressure", "channel_pressure"
+        - "control_change", "program_change", "pitch_bend"
+        - "sysex"
+        - "timing_clock", "active_sensing"
+        - "transport" (start, stop, continue)
+        - "realtime" (clock, transport, active sensing)
+        - "channel" (all channel voice messages)
+        - "system" (all system messages)
+    """
+    types: Optional[Set[str]] = field(default=None)
+    exclude_types: Optional[Set[str]] = field(default=None)
+    channels: Optional[Set[int]] = field(default=None)  # 1-16
+    exclude_channels: Optional[Set[int]] = field(default=None)
+    controllers: Optional[Set[int]] = field(default=None)  # For CC messages
+    notes: Optional[Set[int]] = field(default=None)  # Note numbers 0-127
+    
+    def __post_init__(self):
+        # Convert lists to sets for faster lookup
+        if self.types is not None and not isinstance(self.types, set):
+            self.types = set(self.types)
+        if self.exclude_types is not None and not isinstance(self.exclude_types, set):
+            self.exclude_types = set(self.exclude_types)
+        if self.channels is not None and not isinstance(self.channels, set):
+            self.channels = set(self.channels)
+        if self.exclude_channels is not None and not isinstance(self.exclude_channels, set):
+            self.exclude_channels = set(self.exclude_channels)
+        if self.controllers is not None and not isinstance(self.controllers, set):
+            self.controllers = set(self.controllers)
+        if self.notes is not None and not isinstance(self.notes, set):
+            self.notes = set(self.notes)
+    
+    def matches(self, data: bytes) -> bool:
+        """
+        Check if a MIDI message matches this filter.
+        
+        Args:
+            data: Raw MIDI bytes
+            
+        Returns:
+            True if the message should be passed through, False if filtered out.
+        """
+        if not data:
+            return False
+        
+        status = data[0]
+        
+        # Determine message type and properties
+        msg_types = set()
+        channel = None
+        controller = None
+        note = None
+        
+        if status < 0xF0:
+            # Channel message
+            channel = (status & 0x0F) + 1  # 1-16
+            msg_type_byte = status & 0xF0
+            msg_types.add(MSG_CHANNEL)
+            
+            if msg_type_byte == NOTE_OFF:
+                msg_types.add(MSG_NOTE_OFF)
+                msg_types.add(MSG_NOTE)
+                note = data[1] if len(data) > 1 else None
+            elif msg_type_byte == NOTE_ON:
+                vel = data[2] if len(data) > 2 else 0
+                if vel > 0:
+                    msg_types.add(MSG_NOTE_ON)
+                else:
+                    msg_types.add(MSG_NOTE_OFF)  # Note On vel=0 is Note Off
+                msg_types.add(MSG_NOTE)
+                note = data[1] if len(data) > 1 else None
+            elif msg_type_byte == POLY_PRESSURE:
+                msg_types.add(MSG_POLY_PRESSURE)
+                note = data[1] if len(data) > 1 else None
+            elif msg_type_byte == CONTROL_CHANGE:
+                msg_types.add(MSG_CONTROL_CHANGE)
+                controller = data[1] if len(data) > 1 else None
+            elif msg_type_byte == PROGRAM_CHANGE:
+                msg_types.add(MSG_PROGRAM_CHANGE)
+            elif msg_type_byte == CHANNEL_PRESSURE:
+                msg_types.add(MSG_CHANNEL_PRESSURE)
+            elif msg_type_byte == PITCH_BEND:
+                msg_types.add(MSG_PITCH_BEND)
+        else:
+            # System message
+            msg_types.add(MSG_SYSTEM)
+            
+            if status == SYSEX_START:
+                msg_types.add(MSG_SYSEX)
+            elif status == TIMING_CLOCK:
+                msg_types.add(MSG_TIMING_CLOCK)
+                msg_types.add(MSG_REALTIME)
+            elif status in (START, STOP, CONTINUE):
+                msg_types.add(MSG_TRANSPORT)
+                msg_types.add(MSG_REALTIME)
+            elif status == ACTIVE_SENSING:
+                msg_types.add(MSG_ACTIVE_SENSING)
+                msg_types.add(MSG_REALTIME)
+        
+        # Check exclusions first
+        if self.exclude_types is not None:
+            if msg_types & self.exclude_types:
+                return False
+        
+        if self.exclude_channels is not None and channel is not None:
+            if channel in self.exclude_channels:
+                return False
+        
+        # Check inclusions
+        if self.types is not None:
+            if not (msg_types & self.types):
+                return False
+        
+        if self.channels is not None and channel is not None:
+            if channel not in self.channels:
+                return False
+        
+        if self.controllers is not None and MSG_CONTROL_CHANGE in msg_types:
+            if controller is None or controller not in self.controllers:
+                return False
+        
+        if self.notes is not None and note is not None:
+            if note not in self.notes:
+                return False
+        
+        return True
+    
+    def filter_messages(self, messages: list) -> list:
+        """
+        Filter a list of MIDIMessage objects.
+        
+        Args:
+            messages: List of MIDIMessage objects
+            
+        Returns:
+            Filtered list containing only matching messages.
+        """
+        return [msg for msg in messages if self.matches(msg.data)]

@@ -568,13 +568,14 @@ class MIDIOutputClient:
         client.close()
     """
     
-    def __init__(self, callback: MIDICallback, framework_path: Optional[str] = None):
+    def __init__(self, callback: MIDICallback, message_filter=None, framework_path: Optional[str] = None):
         """
-        Create a new MIDI spy client.
+        Create a new MIDI output client for capturing outgoing MIDI.
         
         Args:
             callback: Function called when MIDI messages are captured.
                       Signature: callback(messages: List[MIDIMessage], source_endpoint_unique_id: int)
+            message_filter: Optional MessageFilter to filter messages before callback.
             framework_path: Optional path to the SnoizeMIDISpy framework.
         
         Raises:
@@ -582,6 +583,7 @@ class MIDIOutputClient:
             DriverCommunicationError: If communication with the driver fails.
         """
         self._callback = callback
+        self._message_filter = message_filter
         self._spy = _get_spy_framework()
         self._client_ref = c_void_p()
         self._port_ref = c_void_p()
@@ -667,7 +669,11 @@ class MIDIOutputClient:
                 
                 # Call the user's callback
                 if messages:
-                    self._callback(messages, source_id)
+                    # Apply filter if set
+                    if self._message_filter is not None:
+                        messages = self._message_filter.filter_messages(messages)
+                    if messages:
+                        self._callback(messages, source_id)
                     
             except Exception as e:
                 import sys
@@ -831,6 +837,16 @@ class MIDIOutputClient:
                 destinations.append(dest)
         return destinations
     
+    @property
+    def message_filter(self):
+        """Get the current message filter."""
+        return self._message_filter
+    
+    @message_filter.setter
+    def message_filter(self, value):
+        """Set the message filter."""
+        self._message_filter = value
+    
     def close(self):
         """
         Close the MIDI spy client and release all resources.
@@ -899,7 +915,7 @@ class MIDIInputClient:
         client.close()
     """
     
-    def __init__(self, callback: MIDICallback, client_name: str = "PythonMIDI"):
+    def __init__(self, callback: MIDICallback, client_name: str = "PythonMIDI", message_filter=None):
         """
         Create a new MIDI input client.
         
@@ -907,8 +923,10 @@ class MIDIInputClient:
             callback: Function called when MIDI messages are received.
                       Signature: callback(messages: List[MIDIMessage], source_unique_id: int)
             client_name: Name for the MIDI client (visible in system).
+            message_filter: Optional MessageFilter to filter messages before callback.
         """
         self._callback = callback
+        self._message_filter = message_filter
         self._coremidi = _get_coremidi()
         self._cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
         
@@ -1000,7 +1018,11 @@ class MIDIInputClient:
                             source_id = 0
                 
                 if messages:
-                    self._callback(messages, source_id)
+                    # Apply filter if set
+                    if self._message_filter is not None:
+                        messages = self._message_filter.filter_messages(messages)
+                    if messages:
+                        self._callback(messages, source_id)
                     
             except Exception as e:
                 import sys
@@ -1138,6 +1160,16 @@ class MIDIInputClient:
             if src.endpoint_ref in endpoint_refs:
                 sources.append(src)
         return sources
+    
+    @property
+    def message_filter(self):
+        """Get the current message filter."""
+        return self._message_filter
+    
+    @message_filter.setter
+    def message_filter(self, value):
+        """Set the message filter."""
+        self._message_filter = value
     
     def close(self):
         """Close the MIDI input client and release resources."""

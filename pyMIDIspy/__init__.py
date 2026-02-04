@@ -61,6 +61,7 @@ from .core import (
 from .midi_utils import (
     parse_midi_message,
     ParsedMIDIMessage,
+    MessageFilter,
     note_name,
     note_number,
     controller_name,
@@ -77,16 +78,33 @@ from .midi_utils import (
     START,
     CONTINUE,
     STOP,
+    # Message type constants for filtering
+    MSG_NOTE_OFF,
+    MSG_NOTE_ON,
+    MSG_NOTE,
+    MSG_POLY_PRESSURE,
+    MSG_CONTROL_CHANGE,
+    MSG_PROGRAM_CHANGE,
+    MSG_CHANNEL_PRESSURE,
+    MSG_PITCH_BEND,
+    MSG_SYSEX,
+    MSG_TIMING_CLOCK,
+    MSG_TRANSPORT,
+    MSG_ACTIVE_SENSING,
+    MSG_REALTIME,
+    MSG_CHANNEL,
+    MSG_SYSTEM,
 )
 
 __all__ = [
     # Core classes
     "MIDIOutputClient",   # Capture outgoing MIDI (requires spy driver)
     "MIDIInputClient",    # Receive incoming MIDI (standard CoreMIDI)
-    "MIDISpyClient",      # Alias for MIDIOutputClient (backward compatibility)
     "MIDIDestination",
     "MIDISource",
     "MIDIMessage",
+    # Filtering
+    "MessageFilter",
     # Exceptions
     "MIDISpyError",
     "DriverMissingError",
@@ -106,7 +124,7 @@ __all__ = [
     "note_name",
     "note_number",
     "controller_name",
-    # Constants
+    # MIDI status byte constants
     "NOTE_OFF",
     "NOTE_ON",
     "POLY_PRESSURE",
@@ -119,12 +137,25 @@ __all__ = [
     "START",
     "CONTINUE",
     "STOP",
+    # Message type constants for filtering
+    "MSG_NOTE_OFF",
+    "MSG_NOTE_ON",
+    "MSG_NOTE",
+    "MSG_POLY_PRESSURE",
+    "MSG_CONTROL_CHANGE",
+    "MSG_PROGRAM_CHANGE",
+    "MSG_CHANNEL_PRESSURE",
+    "MSG_PITCH_BEND",
+    "MSG_SYSEX",
+    "MSG_TIMING_CLOCK",
+    "MSG_TRANSPORT",
+    "MSG_ACTIVE_SENSING",
+    "MSG_REALTIME",
+    "MSG_CHANNEL",
+    "MSG_SYSTEM",
 ]
 
 __version__ = "1.0.0"
-
-# Backward compatibility alias
-MIDISpyClient = MIDIOutputClient
 
 
 def get_framework_path():
