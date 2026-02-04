@@ -1,0 +1,15 @@
+# Include the README and license
+include README.md
+include LICENSE
+
+# Include the package data
+recursive-include pyMIDIspy/lib *.framework
+recursive-include pyMIDIspy/lib *.plugin
+
+# Include the framework contents (dylibs, headers, etc.)
+recursive-include pyMIDIspy/lib/SnoizeMIDISpy.framework *
+
+# Exclude build artifacts
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store

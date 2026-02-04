@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyMIDIspy"
+version = "1.0.0"
+authors = [
+    { name = "gramster" }
+]
+description = "Python wrapper for SnoizeMIDISpy - capture outgoing MIDI on macOS"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: MIDI",
+]
+keywords = ["midi", "macos", "coremidi", "audio", "music"]
+dependencies = [
+    "pyobjc-core",
+    "pyobjc-framework-Cocoa",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "build", "twine"]
+
+[project.urls]
+Repository = "https://github.com/gramster/pyMIDIspy"
+Homepage = "https://github.com/gramster/pyMIDIspy"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["pyMIDIspy*"]
+
+[tool.setuptools.package-data]
+pyMIDIspy = [
+    "lib/SnoizeMIDISpy.framework/**/*",
+    "lib/MIDI Monitor.plugin/**/*",
+]
