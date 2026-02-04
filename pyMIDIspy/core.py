@@ -509,7 +509,7 @@ def install_driver_if_necessary() -> Optional[str]:
     """
     Install the MIDI spy driver if it's not already installed.
     
-    This function must be called before creating a MIDISpyClient. The driver
+    This function must be called before creating a MIDIOutputClient. The driver
     enables capturing outgoing MIDI data.
     
     Returns:
@@ -541,26 +541,26 @@ def install_driver_if_necessary() -> Optional[str]:
 
 
 # =============================================================================
-# MIDISpyClient class
+# MIDIOutputClient class (captures outgoing MIDI)
 # =============================================================================
 
 # Callback type for Python users
 MIDICallback = Callable[[List[MIDIMessage], int], None]
 
 
-class MIDISpyClient:
+class MIDIOutputClient:
     """
-    A client for spying on outgoing MIDI messages.
+    A client for capturing outgoing MIDI messages sent to destinations.
     
     This class wraps the SnoizeMIDISpy framework to enable capturing MIDI
-    data that is being sent to MIDI destinations.
+    data that is being sent to MIDI destinations by other applications.
     
     Example:
         def on_midi(messages, endpoint_id):
             for msg in messages:
                 print(f"MIDI: {msg}")
         
-        client = MIDISpyClient(callback=on_midi)
+        client = MIDIOutputClient(callback=on_midi)
         client.connect_destination(destination_unique_id)
         
         # ... keep running ...

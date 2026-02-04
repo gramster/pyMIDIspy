@@ -1,23 +1,23 @@
 """
-SnoizeMIDISpy Python wrapper
+pyMIDIspy - Python MIDI capture for macOS
 
-A Python library for capturing outgoing MIDI messages on macOS using the
+A Python library for capturing MIDI messages on macOS using the
 SnoizeMIDISpy framework. This enables monitoring of MIDI data that is sent
 to any MIDI destination, not just receiving incoming MIDI.
 
 Usage:
-    from snoize_midi_spy import MIDISpyClient, get_destinations
+    from pyMIDIspy import MIDIOutputClient, get_destinations
 
     # List available MIDI destinations
     for dest in get_destinations():
         print(f"{dest.name} (ID: {dest.unique_id})")
 
-    # Create a spy client and monitor a destination
+    # Create an output client and monitor a destination
     def on_midi_message(messages, source_endpoint):
         for msg in messages:
             print(f"Captured: {msg}")
 
-    client = MIDISpyClient(callback=on_midi_message)
+    client = MIDIOutputClient(callback=on_midi_message)
     client.connect_destination(destination_unique_id)
 
     # Keep running...
@@ -36,7 +36,7 @@ Requirements:
 
 from .core import (
     # Clients
-    MIDISpyClient,
+    MIDIOutputClient,
     MIDIInputClient,
     # Exceptions
     MIDISpyError,
@@ -81,8 +81,9 @@ from .midi_utils import (
 
 __all__ = [
     # Core classes
-    "MIDISpyClient",      # Capture outgoing MIDI (requires spy driver)
+    "MIDIOutputClient",   # Capture outgoing MIDI (requires spy driver)
     "MIDIInputClient",    # Receive incoming MIDI (standard CoreMIDI)
+    "MIDISpyClient",      # Alias for MIDIOutputClient (backward compatibility)
     "MIDIDestination",
     "MIDISource",
     "MIDIMessage",
@@ -121,6 +122,9 @@ __all__ = [
 ]
 
 __version__ = "1.0.0"
+
+# Backward compatibility alias
+MIDISpyClient = MIDIOutputClient
 
 
 def get_framework_path():

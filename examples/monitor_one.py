@@ -9,8 +9,8 @@ Usage:
 
 import sys
 import time
-from snoize_midi_spy import (
-    MIDISpyClient,
+from pyMIDIspy import (
+    MIDIOutputClient,
     get_destinations,
     get_destination_by_unique_id,
     install_driver_if_necessary,
@@ -53,7 +53,7 @@ def main():
     print("Press Ctrl+C to stop")
     print("-" * 40)
     
-    with MIDISpyClient(callback=on_midi) as client:
+    with MIDIOutputClient(callback=on_midi) as client:
         client.connect_destination(dest)
         
         try:

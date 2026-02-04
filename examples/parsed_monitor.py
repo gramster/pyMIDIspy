@@ -8,8 +8,8 @@ human-readable MIDI messages.
 
 import sys
 import time
-from snoize_midi_spy import (
-    MIDISpyClient,
+from pyMIDIspy import (
+    MIDIOutputClient,
     get_destinations,
     install_driver_if_necessary,
     parse_midi_message,
@@ -81,7 +81,7 @@ def main():
     print("Monitoring all MIDI output. Press Ctrl+C to stop.")
     print("-" * 50)
     
-    with MIDISpyClient(callback=on_midi) as client:
+    with MIDIOutputClient(callback=on_midi) as client:
         for dest in destinations:
             try:
                 client.connect_destination(dest)

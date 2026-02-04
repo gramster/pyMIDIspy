@@ -7,8 +7,8 @@ This script monitors all MIDI destinations and prints captured MIDI messages.
 
 import sys
 import time
-from snoize_midi_spy import (
-    MIDISpyClient,
+from pyMIDIspy import (
+    MIDIOutputClient,
     get_destinations,
     install_driver_if_necessary,
     MIDIMessage,
@@ -103,10 +103,10 @@ def main():
             formatted = format_midi_message(msg)
             print(f"[{source_name:30s}] {formatted}")
     
-    # Create the spy client
+    # Create the output client
     try:
-        print("Creating MIDI spy client...")
-        with MIDISpyClient(callback=on_midi) as client:
+        print("Creating MIDI output client...")
+        with MIDIOutputClient(callback=on_midi) as client:
             # Connect to all destinations
             for dest in destinations:
                 try:

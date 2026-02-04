@@ -8,7 +8,7 @@ A Python library for MIDI capture on macOS, providing both:
 
 This library enables Python applications to:
 
-1. **Spy on outgoing MIDI** (`MIDISpyClient`) - Capture what other applications are *sending* to MIDI outputs. This uses the SnoizeMIDISpy driver and is not possible with normal MIDI APIs.
+1. **Capture outgoing MIDI** (`MIDIOutputClient`) - Capture what other applications are *sending* to MIDI outputs. This uses the SnoizeMIDISpy driver and is not possible with normal MIDI APIs.
 
 2. **Receive incoming MIDI** (`MIDIInputClient`) - Standard MIDI input from sources like keyboards and controllers.
 
@@ -117,7 +117,7 @@ with MIDIInputClient(callback=on_midi) as client:
 ### Outgoing MIDI (to destinations)
 
 ```python
-from pyMIDIspy import MIDISpyClient, get_destinations, install_driver_if_necessary
+from pyMIDIspy import MIDIOutputClient, get_destinations, install_driver_if_necessary
 
 # Install the spy driver (first time only)
 install_driver_if_necessary()
@@ -126,8 +126,8 @@ def on_midi(messages, dest_id):
     for msg in messages:
         print(f"Captured outgoing: {msg.data.hex()}")
 
-# Spy on MIDI being sent to a destination
-with MIDISpyClient(callback=on_midi) as client:
+# Capture MIDI being sent to a destination
+with MIDIOutputClient(callback=on_midi) as client:
     destinations = get_destinations()
     if destinations:
         client.connect_destination(destinations[0])
@@ -140,7 +140,7 @@ with MIDISpyClient(callback=on_midi) as client:
 ### Both directions
 
 ```python
-from pyMIDIspy import MIDISpyClient, MIDIInputClient, get_sources, get_destinations
+from pyMIDIspy import MIDIOutputClient, MIDIInputClient, get_sources, get_destinations
 
 def on_incoming(messages, source_id):
     for msg in messages:
@@ -152,13 +152,13 @@ def on_outgoing(messages, dest_id):
 
 # Create both clients
 with MIDIInputClient(callback=on_incoming) as input_client, \
-     MIDISpyClient(callback=on_outgoing) as spy_client:
+     MIDIOutputClient(callback=on_outgoing) as output_client:
     
     # Connect to all sources and destinations
     for src in get_sources():
         input_client.connect_source(src)
     for dest in get_destinations():
-        spy_client.connect_destination(dest)
+        output_client.connect_destination(dest)
     
     import time
     while True:
@@ -204,12 +204,12 @@ client = MIDIInputClient(callback=my_callback, client_name="MyApp")
 **Properties:**
 - `connected_sources` - List of currently connected sources
 
-##### `MIDISpyClient`
+##### `MIDIOutputClient`
 
 Captures outgoing MIDI sent to destinations. Requires the spy driver.
 
 ```python
-client = MIDISpyClient(callback=my_callback)
+client = MIDIOutputClient(callback=my_callback)
 ```
 
 **Methods:**
