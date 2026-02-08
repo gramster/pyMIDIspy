@@ -3,7 +3,7 @@
 Simple example: List all MIDI destinations.
 """
 
-from snoize_midi_spy import get_destinations
+from pyMIDIspy import get_destinations
 
 print("MIDI Destinations:")
 print("-" * 40)

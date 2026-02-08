@@ -8,7 +8,7 @@ No spy driver required.
 
 import sys
 import time
-from snoize_midi_spy import (
+from pyMIDIspy import (
     MIDIInputClient,
     get_sources,
     parse_midi_message,
