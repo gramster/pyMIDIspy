@@ -17,10 +17,10 @@ if ! command -v xcodebuild &> /dev/null; then
     exit 1
 fi
 
-# Initialize submodules if needed
-if [ ! -f "vendor/MIDIApps/MIDIApps.xcworkspace/contents.xcworkspacedata" ]; then
-    echo "Initializing git submodules..."
-    git submodule update --init --recursive
+# Verify framework source exists
+if [ ! -f "src/SnoizeMIDISpy/SnoizeMIDISpy.xcodeproj/project.pbxproj" ]; then
+    echo "Error: SnoizeMIDISpy source not found in src/SnoizeMIDISpy/"
+    exit 1
 fi
 
 # Build configuration (Release by default)
@@ -36,8 +36,8 @@ rm -rf *.egg-info
 
 # Build the framework using setup.py
 echo "Building framework and wheel..."
-python -m pip install --upgrade pip build wheel
-python -m build
+python3 -m pip install --upgrade pip build wheel
+python3 -m build
 
 echo ""
 echo "========================================"

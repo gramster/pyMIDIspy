@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyMIDIspy"
-version = "1.0.0"
+version = "1.1.1"
 authors = [
     { name = "gramster" }
 ]
@@ -30,6 +30,7 @@ keywords = ["midi", "macos", "coremidi", "audio", "music"]
 dependencies = [
     "pyobjc-core",
     "pyobjc-framework-Cocoa",
+    "pyobjc-framework-CoreMIDI",
 ]
 
 [project.optional-dependencies]
